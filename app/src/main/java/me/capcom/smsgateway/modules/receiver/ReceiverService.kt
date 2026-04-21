@@ -62,11 +62,15 @@ class ReceiverService : KoinComponent {
     }
 
     fun process(context: Context, message: InboxMessage) {
+        val receivedAt = System.currentTimeMillis()
         logsService.insert(
             LogEntry.Priority.DEBUG,
             MODULE_NAME,
             "ReceiverService::process - message received",
-            mapOf("message" to message)
+            mapOf(
+                "message" to message,
+                "receivedAt" to receivedAt,
+            )
         )
 
         val simSlotIndex = message.subscriptionId?.let {
@@ -81,6 +85,18 @@ class ReceiverService : KoinComponent {
 
         try {
             incomingMessagesService.save(message, sender, recipient, simNumber)
+            logsService.insert(
+                LogEntry.Priority.INFO,
+                MODULE_NAME,
+                "Incoming message stored locally",
+                mapOf(
+                    "sender" to sender,
+                    "recipient" to recipient,
+                    "simNumber" to simNumber,
+                    "receivedAt" to receivedAt,
+                    "storeElapsedMs" to (System.currentTimeMillis() - receivedAt),
+                )
+            )
         } catch (e: Exception) {
             logsService.insert(
                 LogEntry.Priority.ERROR,
@@ -148,10 +164,15 @@ class ReceiverService : KoinComponent {
         webHooksService.emit(context, type, payload)
 
         logsService.insert(
-            LogEntry.Priority.DEBUG,
+            LogEntry.Priority.INFO,
             MODULE_NAME,
             "ReceiverService::process - message processed",
-            mapOf("type" to type, "payload" to payload)
+            mapOf(
+                "type" to type,
+                "payload" to payload,
+                "receivedAt" to receivedAt,
+                "totalElapsedMs" to (System.currentTimeMillis() - receivedAt),
+            )
         )
     }
 

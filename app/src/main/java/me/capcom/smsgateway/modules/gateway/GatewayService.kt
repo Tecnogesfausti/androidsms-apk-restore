@@ -192,11 +192,35 @@ class GatewayService(
     internal suspend fun getNewMessages(context: Context) {
         if (!settings.enabled) return
         val settings = settings.registrationInfo ?: return
+        val startedAt = System.currentTimeMillis()
         val processingOrder = when (messagesService.processingOrder) {
             MessagesSettings.ProcessingOrder.LIFO -> GatewayApi.ProcessingOrder.LIFO
             MessagesSettings.ProcessingOrder.FIFO -> GatewayApi.ProcessingOrder.FIFO
         }
+        logsService.insert(
+            LogEntry.Priority.INFO,
+            MODULE_NAME,
+            "Gateway sync started",
+            mapOf(
+                "deviceId" to settings.id,
+                "serverUrl" to this.settings.serverUrl,
+                "processingOrder" to processingOrder.name,
+                "notificationChannel" to this.settings.notificationChannel.name,
+                "startedAt" to startedAt,
+            )
+        )
         val messages = api.getMessages(settings.token, processingOrder)
+        logsService.insert(
+            LogEntry.Priority.INFO,
+            MODULE_NAME,
+            "Gateway pending messages fetched",
+            mapOf(
+                "deviceId" to settings.id,
+                "count" to messages.size,
+                "startedAt" to startedAt,
+                "fetchElapsedMs" to (System.currentTimeMillis() - startedAt),
+            )
+        )
         for (message in messages) {
             try {
                 processMessage(context, message)
@@ -213,11 +237,33 @@ class GatewayService(
                 th.printStackTrace()
             }
         }
+        logsService.insert(
+            LogEntry.Priority.INFO,
+            MODULE_NAME,
+            "Gateway sync finished",
+            mapOf(
+                "deviceId" to settings.id,
+                "count" to messages.size,
+                "startedAt" to startedAt,
+                "totalElapsedMs" to (System.currentTimeMillis() - startedAt),
+            )
+        )
     }
 
     private fun processMessage(context: Context, message: GatewayApi.Message) {
+        val startedAt = System.currentTimeMillis()
         val messageState = messagesService.getMessage(message.id)
         if (messageState != null) {
+            logsService.insert(
+                LogEntry.Priority.INFO,
+                MODULE_NAME,
+                "Gateway message already exists locally",
+                mapOf(
+                    "messageId" to message.id,
+                    "startedAt" to startedAt,
+                    "stateSyncTriggered" to true,
+                )
+            )
             SendStateWorker.start(context, message.id)
             return
         }
@@ -245,6 +291,18 @@ class GatewayService(
                 priority = message.priority,
             )
         )
+        logsService.insert(
+            LogEntry.Priority.INFO,
+            MODULE_NAME,
+            "Gateway message queued for local send",
+            mapOf(
+                "messageId" to message.id,
+                "phoneCount" to message.phoneNumbers.size,
+                "priority" to message.priority,
+                "startedAt" to startedAt,
+                "queueElapsedMs" to (System.currentTimeMillis() - startedAt),
+            )
+        )
         messagesService.enqueueMessage(request)
     }
 
@@ -252,6 +310,7 @@ class GatewayService(
         message: MessageWithRecipients
     ) {
         val settings = settings.registrationInfo ?: return
+        val startedAt = System.currentTimeMillis()
 
         api.patchMessages(
             settings.token,
@@ -268,6 +327,18 @@ class GatewayService(
                     },
                     message.states.associate { it.state to Date(it.updatedAt) }
                 )
+            )
+        )
+        logsService.insert(
+            LogEntry.Priority.INFO,
+            MODULE_NAME,
+            "Gateway message state synced",
+            mapOf(
+                "messageId" to message.message.id,
+                "state" to message.message.state.name,
+                "recipientCount" to message.recipients.size,
+                "startedAt" to startedAt,
+                "syncElapsedMs" to (System.currentTimeMillis() - startedAt),
             )
         )
     }

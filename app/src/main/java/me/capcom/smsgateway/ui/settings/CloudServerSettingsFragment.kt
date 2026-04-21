@@ -28,16 +28,29 @@ class CloudServerSettingsFragment : BasePreferenceFragment() {
 
         findPreference<Preference>("transient.device_id")?.summary =
             settings.deviceId ?: getString(R.string.n_a)
+        findPreference<Preference>("transient.fcm_token")?.summary =
+            settings.fcmToken ?: getString(R.string.n_a)
 
         findPreference<EditTextPreference>("gateway.cloud_url")?.setSummaryProvider {
             val hostname = preferenceManager.sharedPreferences?.getString(it.key, null)
             if (hostname.isNullOrEmpty()) {
                 preferenceManager.sharedPreferences?.edit(true) {
-                    putString(it.key, GatewaySettings.PUBLIC_URL)
+                    putString(it.key, GatewaySettings.DEFAULT_SERVER_URL)
                 }
-                return@setSummaryProvider GatewaySettings.PUBLIC_URL
+                return@setSummaryProvider GatewaySettings.DEFAULT_SERVER_URL
             }
             return@setSummaryProvider hostname
+        }
+
+        findPreference<EditTextPreference>("gateway.private_token")?.setSummaryProvider {
+            val token = preferenceManager.sharedPreferences?.getString(it.key, null)
+            if (token.isNullOrEmpty()) {
+                preferenceManager.sharedPreferences?.edit(true) {
+                    putString(it.key, GatewaySettings.DEFAULT_PRIVATE_TOKEN)
+                }
+                return@setSummaryProvider GatewaySettings.DEFAULT_PRIVATE_TOKEN
+            }
+            return@setSummaryProvider token
         }
 
 
@@ -58,14 +71,14 @@ class CloudServerSettingsFragment : BasePreferenceFragment() {
         }
 
         findPreference<EditTextPreference>("gateway.username")?.setSummaryProvider {
-            settings.username ?: getString(R.string.not_set)
+            settings.username ?: getString(R.string.assigned_after_registration)
         }
         findPreference<EditTextPreference>("gateway.password")?.apply {
             isEnabled = settings.username != null && settings.password != null
 
             setSummaryProvider {
                 when {
-                    settings.username == null -> getString(R.string.not_registered)
+                    settings.username == null -> getString(R.string.assigned_after_registration)
                     settings.username != null && settings.password == null -> "Can't be changed"
                     else -> settings.password
                 }

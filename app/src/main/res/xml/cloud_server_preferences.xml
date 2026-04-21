@@ -3,11 +3,13 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <PreferenceCategory app:title="@string/server">
         <EditTextPreference
+            android:defaultValue="http://smsgateway.mihuerto.uk/api/mobile/v1"
             app:enableCopying="true"
             app:icon="@drawable/ic_server"
             app:key="gateway.cloud_url"
             app:title="@string/api_url" />
         <EditTextPreference
+            android:defaultValue="sms-gateway-token-2026-prueba-lan"
             app:icon="@drawable/ic_token"
             app:key="gateway.private_token"
             app:summary="@string/ignored_for_public_server"
@@ -22,6 +24,12 @@
             app:useSimpleSummaryProvider="true" />
     </PreferenceCategory>
     <PreferenceCategory app:title="@string/credentials">
+        <Preference
+            android:icon="@drawable/ic_advanced"
+            android:key="transient.registration_help"
+            android:persistent="false"
+            android:summary="@string/cloud_registration_help"
+            android:title="@string/information" />
         <EditTextPreference
             app:enableCopying="true"
             app:icon="@drawable/ic_username"
@@ -44,6 +52,12 @@
             app:enableCopying="true" />
     </PreferenceCategory>
     <PreferenceCategory app:title="@string/device">
+        <Preference
+            android:icon="@drawable/ic_token"
+            android:key="transient.fcm_token"
+            android:title="@string/fcm_token"
+            app:enableCopying="true"
+            app:persistent="false" />
         <Preference
             android:icon="@drawable/ic_device_id"
             android:key="transient.device_id"

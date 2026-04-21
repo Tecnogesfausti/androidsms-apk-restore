@@ -9,6 +9,8 @@ import androidx.fragment.app.setFragmentResult
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayout.OnTabSelectedListener
 import me.capcom.smsgateway.databinding.DialogFirstStartBinding
+import me.capcom.smsgateway.modules.gateway.GatewaySettings
+import org.koin.android.ext.android.inject
 
 class FirstStartDialogFragment : DialogFragment() {
 
@@ -17,27 +19,37 @@ class FirstStartDialogFragment : DialogFragment() {
     // This property is only valid between onCreateDialog and
     // onDestroyView.
     private val binding get() = _binding!!
+    private val gatewaySettings: GatewaySettings by inject()
     
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         _binding = DialogFirstStartBinding.inflate(layoutInflater)
+
+        binding.textSignUpDefaults.text = getString(
+            me.capcom.smsgateway.R.string.cloud_registration_defaults,
+            gatewaySettings.serverUrl,
+            gatewaySettings.privateToken ?: getString(me.capcom.smsgateway.R.string.n_a)
+        )
 
         binding.tabLayout.addOnTabSelectedListener(object : OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab) {
                 when (tab.position) {
                     POSITION_SIGNUP -> {
                         binding.layoutSignUp.isVisible = true
+                        binding.textSignUpDefaults.isVisible = true
                         binding.layoutSignIn.isVisible = false
                         binding.layoutSignInByCode.isVisible = false
                     }
 
                     POSITION_SIGNIN -> {
                         binding.layoutSignUp.isVisible = false
+                        binding.textSignUpDefaults.isVisible = false
                         binding.layoutSignIn.isVisible = true
                         binding.layoutSignInByCode.isVisible = false
                     }
 
                     POSITION_SIGNIN_BY_CODE -> {
                         binding.layoutSignUp.isVisible = false
+                        binding.textSignUpDefaults.isVisible = false
                         binding.layoutSignIn.isVisible = false
                         binding.layoutSignInByCode.isVisible = true
                     }

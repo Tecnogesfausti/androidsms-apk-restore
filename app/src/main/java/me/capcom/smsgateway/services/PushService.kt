@@ -21,16 +21,37 @@ class PushService : FirebaseMessagingService(), KoinComponent {
     private val eventsRouter by inject<EventsRouter>()
 
     override fun onNewToken(token: String) {
+        logsService.insert(
+            priority = LogEntry.Priority.INFO,
+            module = this.javaClass.simpleName,
+            message = "FCM token refreshed",
+            mapOf(
+                "token" to token,
+                "receivedAt" to System.currentTimeMillis()
+            )
+        )
         RegistrationWorker.start(this@PushService, token, true)
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
+        val receivedAt = System.currentTimeMillis()
         try {
             Log.d(this.javaClass.name, message.data.toString())
 
             val event = message.data["event"]?.let { ExternalEventType.valueOf(it) }
                 ?: ExternalEventType.MessageEnqueued
             val data = message.data["data"]
+
+            logsService.insert(
+                priority = LogEntry.Priority.INFO,
+                module = this.javaClass.simpleName,
+                message = "FCM push received",
+                mapOf(
+                    "event" to event.name,
+                    "data" to data,
+                    "receivedAt" to receivedAt,
+                )
+            )
 
             Log.d(this.javaClass.name, "Routing event: $event with data: $data")
 
@@ -40,13 +61,29 @@ class PushService : FirebaseMessagingService(), KoinComponent {
                     data = data,
                 )
             )
+
+            logsService.insert(
+                priority = LogEntry.Priority.INFO,
+                module = this.javaClass.simpleName,
+                message = "FCM push routed",
+                mapOf(
+                    "event" to event.name,
+                    "data" to data,
+                    "receivedAt" to receivedAt,
+                    "routeElapsedMs" to (System.currentTimeMillis() - receivedAt),
+                )
+            )
         } catch (e: Throwable) {
             Log.e(this.javaClass.name, "Error processing push message", e)
             logsService.insert(
                 priority = LogEntry.Priority.ERROR,
                 module = this.javaClass.simpleName,
                 message = "Failed to process push message: ${e.message}",
-                mapOf("error" to e.toString())
+                mapOf(
+                    "error" to e.toString(),
+                    "receivedAt" to receivedAt,
+                    "failedAfterMs" to (System.currentTimeMillis() - receivedAt),
+                )
             )
         }
     }

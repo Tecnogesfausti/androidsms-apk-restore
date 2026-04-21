@@ -27,12 +27,23 @@
             android:id="@+id/buttonIncoming"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="4dp"
+            android:layout_marginHorizontal="4dp"
             android:layout_weight="1"
             android:enabled="false"
             android:paddingHorizontal="12dp"
             android:paddingVertical="8dp"
             android:text="@string/incoming_messages"
+            android:textAllCaps="true" />
+
+        <Button
+            android:id="@+id/buttonSt904l"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:layout_weight="1"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="8dp"
+            android:text="@string/st904l_tab"
             android:textAllCaps="true" />
     </LinearLayout>
 

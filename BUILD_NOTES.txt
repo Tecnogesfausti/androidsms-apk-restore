@@ -1,0 +1,110 @@
+Build notes for the local Android SMS Gateway fork
+
+APK already built
+- APK path:
+  /home/lego/sensores/androidSMS/official-android-sms-gateway-src/app/build/outputs/apk/debugInsecure/app-debugInsecure.apk
+- Variant:
+  debugInsecure
+- Why this variant:
+  it allows cleartext HTTP to smsgateway.mihuerto.uk
+
+Install on a phone
+- ADB install command:
+  adb install -r /home/lego/sensores/androidSMS/official-android-sms-gateway-src/app/build/outputs/apk/debugInsecure/app-debugInsecure.apk
+
+Current Firebase setup
+- Firebase console:
+  https://console.firebase.google.com/u/0/project/smsgateway-6494e/overview
+- Local Firebase config file:
+  /home/lego/sensores/androidSMS/official-android-sms-gateway-src/app/google-services.json
+- Android applicationId used by this app:
+  me.capcom.smsgateway
+- If applicationId changes, google-services.json must be regenerated from Firebase
+- Note:
+  app/google-services.json is ignored by git in this repo, so keep a backup copy outside git too
+
+Build command
+- Run from:
+  /home/lego/sensores/androidSMS/official-android-sms-gateway-src
+- Command:
+  HOME=/home/lego/sensores/androidSMS \
+  JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 \
+  ANDROID_SDK_ROOT=/opt/android-sdk \
+  ANDROID_HOME=/opt/android-sdk \
+  ANDROID_USER_HOME=/home/lego/sensores/androidSMS/.android-home \
+  XDG_CACHE_HOME=/home/lego/sensores/androidSMS/.cache-home \
+  GRADLE_USER_HOME=/home/lego/sensores/androidSMS/.gradle-user \
+  ./gradlew assembleDebugInsecure
+
+Server values to enter in the app
+- Base URL:
+  http://smsgateway.mihuerto.uk/api/mobile/v1
+- Private token:
+  sms-gateway-token-2026-prueba-lan
+
+How to use the app
+- For a new phone registration:
+  Home > Start > Sign Up
+- For an existing account:
+  Home > Start > Sign In
+- Existing API user created during bootstrap:
+  login: YHYIAC
+  password: pdtzt8w00suev7
+- Real Android gateway user created from phone registration:
+  login: KN_UH0
+  password: lw_m7ikf96ifi8
+- Real Android gateway device id:
+  qk6wPBpkphquoPlNNwMF2
+- Real Android gateway device token:
+  yWNnkoLs6uH_AC4DienGk
+
+Important note about username and password fields in settings
+- They are assigned after registration
+- They are not the main place to log in manually
+- Manual login is done from the first-start flow in Home
+
+How to get the FCM token
+- Open app settings for Cloud
+- This fork shows the FCM token on screen in Cloud settings
+- If the value is empty, Firebase is not initialized correctly or the phone has not received a token yet
+- FCM token observed on the tested phone:
+  e4sou7TNStyHs3k7UyUXk0:APA91bF_8RNOOUMWaEGJ8LTWYu_Iy_3JY_C1TydZLh3lz36MEja_jeIwYBX3cD_6LM_LaFypLgSN2wHW_67LL1Ug-idBrUe_24gvm7lmIdRKBUl2jm5N2bA
+
+Expected working registration flow
+1. Install the APK on an Android phone with Google Play Services
+2. Open the app
+3. Go to Home > Start
+4. Use Sign Up with the Base URL and Private token above
+5. After successful registration, open Cloud settings and read the FCM token
+
+If registration still fails
+- Check that the phone has internet access
+- Check that the app is using:
+  http://smsgateway.mihuerto.uk/api/mobile/v1
+- Check that the private token matches exactly
+- Review logcat for Firebase and registration errors:
+  adb logcat | grep -i -E 'firebase|fcm|gateway|retrofit|pushservice'
+- If the message queue does not move while FCM is flaky:
+  switch the app to SSE_ONLY and re-arm ONLINE
+
+Verified end-to-end SMS test
+- Date:
+  2026-04-12
+- Sender gateway user:
+  KN_UH0
+- Destination:
+  +34655068269
+- Text:
+  hola
+- Message id:
+  k9N4TCVQ_xrKRIcq_hmwf
+- Final state:
+  Delivered
+
+Related local files
+- APK:
+  /home/lego/sensores/androidSMS/official-android-sms-gateway-src/app/build/outputs/apk/debugInsecure/app-debugInsecure.apk
+- Firebase config:
+  /home/lego/sensores/androidSMS/official-android-sms-gateway-src/app/google-services.json
+- Server notes:
+  /home/lego/sensores/androidSMS/leeme.txt

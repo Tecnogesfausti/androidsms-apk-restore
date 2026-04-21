@@ -34,9 +34,9 @@ class GatewaySettings(
         get() = registrationInfo?.password
 
     val serverUrl: String
-        get() = storage.get<String?>(CLOUD_URL) ?: PUBLIC_URL
+        get() = storage.get<String?>(CLOUD_URL) ?: DEFAULT_SERVER_URL
     val privateToken: String?
-        get() = storage.get<String>(PRIVATE_TOKEN)
+        get() = storage.get<String>(PRIVATE_TOKEN) ?: DEFAULT_PRIVATE_TOKEN
 
     val notificationChannel: NotificationChannel
         get() = storage.get<NotificationChannel>(NOTIFICATION_CHANNEL) ?: NotificationChannel.AUTO
@@ -51,11 +51,14 @@ class GatewaySettings(
         private const val NOTIFICATION_CHANNEL = "notification_channel"
 
         const val PUBLIC_URL = "https://api.sms-gate.app/mobile/v1"
+        const val DEFAULT_SERVER_URL = "http://smsgateway.mihuerto.uk/api/mobile/v1"
+        const val DEFAULT_PRIVATE_TOKEN = "sms-gateway-token-2026-prueba-lan"
     }
 
     override fun export(): Map<String, *> {
         return mapOf(
             CLOUD_URL to serverUrl,
+            PRIVATE_TOKEN to privateToken,
             NOTIFICATION_CHANNEL to notificationChannel.name,
         )
     }
@@ -64,9 +67,9 @@ class GatewaySettings(
         return data.map {
             when (it.key) {
                 CLOUD_URL -> {
-                    val url = it.value?.toString() ?: PUBLIC_URL
-                    if (url != null && !url.startsWith("https://")) {
-                        throw IllegalArgumentException("url must start with https://")
+                    val url = it.value?.toString() ?: DEFAULT_SERVER_URL
+                    if (!url.startsWith("https://") && !url.startsWith("http://")) {
+                        throw IllegalArgumentException("url must start with http:// or https://")
                     }
 
                     val changed = serverUrl != url

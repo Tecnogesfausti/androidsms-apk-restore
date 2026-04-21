@@ -144,6 +144,7 @@ class MessagesService(
     //#endregion
 
     suspend fun processStateIntent(intent: Intent, resultCode: Int) {
+        val receivedAt = System.currentTimeMillis()
         logsService.insert(
             LogEntry.Priority.DEBUG,
             MODULE_NAME,
@@ -152,6 +153,7 @@ class MessagesService(
                 "data" to intent.dataString,
                 "uri" to intent.extras?.getString("uri"),
                 "pdu" to intent.extras?.getByteArray("pdu")?.joinToString("") { "%02x".format(it) },
+                "receivedAt" to receivedAt,
             )
         )
         val (state, error) = when (intent.action) {
@@ -186,6 +188,20 @@ class MessagesService(
         val (id, phone) = intent.dataString?.split("|", limit = 2) ?: return
 
         updateState(id, phone, state, error)
+
+        logsService.insert(
+            LogEntry.Priority.INFO,
+            MODULE_NAME,
+            "Status intent processed",
+            mapOf(
+                "messageId" to id,
+                "phone" to phone,
+                "state" to state.name,
+                "error" to error,
+                "receivedAt" to receivedAt,
+                "processedAfterMs" to (System.currentTimeMillis() - receivedAt),
+            )
+        )
     }
 
     suspend fun truncateLog() {
@@ -195,6 +211,16 @@ class MessagesService(
     }
 
     internal suspend fun sendPendingMessages() {
+        val loopStartedAt = System.currentTimeMillis()
+        logsService.insert(
+            LogEntry.Priority.INFO,
+            MODULE_NAME,
+            "Pending message processing started",
+            mapOf(
+                "processingOrder" to settings.processingOrder.name,
+                "loopStartedAt" to loopStartedAt,
+            )
+        )
         var previousPriority = Message.PRIORITY_MIN
 
         while (true) {
@@ -249,16 +275,50 @@ class MessagesService(
      * @return `true` if message was sent
      */
     private suspend fun sendMessage(request: StoredSendRequest): Boolean {
+        val startedAt = System.currentTimeMillis()
         if (request.params.validUntil?.before(Date()) == true) {
             updateState(request.message.id, null, ProcessingState.Failed, "TTL expired")
             return false
         }
 
+        logsService.insert(
+            LogEntry.Priority.INFO,
+            MODULE_NAME,
+            "SMS send started",
+            mapOf(
+                "messageId" to request.message.id,
+                "phoneCount" to request.message.phoneNumbers.size,
+                "priority" to (request.params.priority ?: Message.PRIORITY_DEFAULT),
+                "startedAt" to startedAt,
+            )
+        )
+
         try {
             sendSMS(request)
+            logsService.insert(
+                LogEntry.Priority.INFO,
+                MODULE_NAME,
+                "SMS send dispatched to Android",
+                mapOf(
+                    "messageId" to request.message.id,
+                    "startedAt" to startedAt,
+                    "dispatchElapsedMs" to (System.currentTimeMillis() - startedAt),
+                )
+            )
             return true
         } catch (e: Exception) {
             e.printStackTrace()
+            logsService.insert(
+                LogEntry.Priority.ERROR,
+                MODULE_NAME,
+                "SMS send failed before dispatch",
+                mapOf(
+                    "messageId" to request.message.id,
+                    "error" to e.message,
+                    "startedAt" to startedAt,
+                    "failedAfterMs" to (System.currentTimeMillis() - startedAt),
+                )
+            )
             updateState(
                 request.message.id,
                 null,
@@ -317,6 +377,7 @@ class MessagesService(
     private suspend fun sendSMS(request: StoredSendRequest) {
         val message = request.message
         val id = message.id
+        val startedAt = System.currentTimeMillis()
 
         val simNumber = selectSimNumber(request.id, request.params)
         val smsManager: SmsManager = getSmsManager(simNumber)
@@ -392,6 +453,7 @@ class MessagesService(
 
         request.message.phoneNumbers
             .forEach { sourcePhoneNumber ->
+                val phoneStartedAt = System.currentTimeMillis()
                 val sentIntent = PendingIntent.getBroadcast(
                     context,
                     0,
@@ -429,6 +491,22 @@ class MessagesService(
                     }
 
                     sendFn(normalizedPhoneNumber, sentIntent, deliveredIntent)
+
+                    logsService.insert(
+                        LogEntry.Priority.INFO,
+                        MODULE_NAME,
+                        "SMS handed to platform",
+                        mapOf(
+                            "messageId" to id,
+                            "sourcePhone" to sourcePhoneNumber,
+                            "normalizedPhone" to normalizedPhoneNumber,
+                            "simNumber" to (simNumber?.plus(1)),
+                            "withDeliveryReport" to request.params.withDeliveryReport,
+                            "messageStartedAt" to startedAt,
+                            "phoneStartedAt" to phoneStartedAt,
+                            "phoneDispatchElapsedMs" to (System.currentTimeMillis() - phoneStartedAt),
+                        )
+                    )
 
                     updateState(id, sourcePhoneNumber, ProcessingState.Processed)
                 } catch (th: Throwable) {
